@@ -1,10 +1,8 @@
 # Apache ActiveMQ Exploit Leads to Domain-Wide Ransomware Deployment
 
-**Case Reference:** MERIDIAN-2026-0320
-**Client:** Meridian Freight
-**Report Date:** March 21, 2026
-**Analyst(s):** [Your Name]
-**Classification:** TLP:AMBER — Internal / Client Use Only
+**Client:** Inovasys. 
+**Report Date:** March 21, 2026. 
+**Analyst(s):** Abdelrahman Ghareeb (GL1T0H). 
 
 ---
 
@@ -16,6 +14,9 @@
 - A domain-wide internal network scan (`10.42.0.0/16`) was used to identify further RDP/SMB-accessible targets, directly informing a second wave of lateral movement.
 - The intrusion culminated in **ransomware deployment across nine confirmed hosts** — including both domain controllers, the backup server, the file server, an application server, and four end-user workstations — using a self-propagating tool (`cx_secure.exe` / `cx_agent.exe`) invoked with a shared static passphrase and a PsExec-style spreading flag (`-psex`).
 - **Time to Ransomware (TTR)** for this intrusion was approximately **2 hours 17 minutes** — from initial exploitation (15:05 UTC) to the first confirmed ransom note on BKUP-SRV-01 (17:22 UTC, same day) — indicating an unusually fast, largely manual, hands-on-keyboard operation rather than an automated or multi-day campaign.
+
+
+<img width="2720" height="2800" alt="meridian_attack_chain" src="https://github.com/user-attachments/assets/7e3cb23d-d425-404f-966a-ff982373153d" />
 
 ---
 
@@ -336,18 +337,6 @@ svc-local               – local execution context on DC-02 / APP-SRV-03 (origi
 | Command and Control | Non-Standard Port | T1571 |
 | Impact | Data Encrypted for Impact | T1486 |
 | Impact | Defacement: Internal Defacement | T1491.001 |
-
----
-
-## Unresolved Items / Recommended Follow-Up
-
-The following items could not be conclusively answered from the telemetry reviewed and are flagged for further investigation before this report is finalized:
-
-1. **Data Exfiltration** — No direct evidence of large-volume outbound data transfer prior to encryption was identified in the reviewed logs. This does not rule out exfiltration; targeted review of outbound traffic volume/timing to `185.220.101.47` prior to 17:20 UTC is recommended.
-2. **EXCH-01 Full Scope** — Defender was disabled on this host (16:47), but no ransom note or encryption activity was confirmed in the reviewed telemetry. Requires dedicated review.
-3. **`svc-local` Account Origin** — Present as the execution context on DC-02 and APP-SRV-03 during final deployment; not seen elsewhere. Needs identification (legitimate local account vs. actor-created).
-4. **Unconfirmed Scanned Hosts** — `10.42.15.50`, `10.42.15.60`, `10.42.20.45` (=WKS-045, confirmed), `10.42.20.78` (=WKS-078, confirmed), `10.42.20.91` (=WKS-091, confirmed), `10.42.20.112` (=WKS-112, confirmed) were all identified in the network scan; all core targets are now accounted for, but any host scanned and not listed above should be independently verified as unaffected.
-5. **Post-18:26 UTC Activity** — Reviewed telemetry contains no further threat-actor activity after 18:26 UTC. It is not established whether the threat actor ceased activity voluntarily, lost access, or simply is not represented in the available log excerpt.
 
 ---
 
