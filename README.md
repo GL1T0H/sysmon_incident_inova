@@ -22,17 +22,15 @@
 
 ## Case Summary
 
-This intrusion began on March 20, 2026, when a threat actor exploited **CVE-2023-46604** on an exposed Apache ActiveMQ server (`MSG-BROKER-01.meridianfreight.local`). The threat actor achieved remote code execution by submitting a crafted OpenWire `ExceptionResponse` message referencing the Java Spring class `org.springframework.context.support.ClassPathXmlApplicationContext`, pointed at a remote, attacker-hosted XML bean definition. The retrieved XML defined a `ProcessBuilder`-based bean, which executed an OS command under the security context of the ActiveMQ service account (`svc-activemq`).
+On March 20, 2026, a threat actor exploited CVE-2023-46604 on an internet-facing Apache ActiveMQ server (MSG-BROKER-01), achieving remote code execution via a malicious OpenWire message that loaded an attacker-hosted Spring XML bean, running commands as svc-activemq.
 
-Using this initial command execution, the threat actor downloaded a payload (`mNcQpLxTfA.exe`) via `certutil.exe`, executed it, and established an outbound C2 channel to `185.220.101.47`. Approximately 27 minutes later, the threat actor performed a named-pipe-based execution verification check, then accessed LSASS process memory on the beachhead host — the first of several LSASS-access events observed throughout the intrusion. A quick check of the `Domain Admins` group followed shortly after.
+Using this access, the actor downloaded and ran a payload (mNcQpLxTfA.exe) via certutil, establishing C2 to 185.220.101.47. Shortly after, they verified execution via a named-pipe check, dumped LSASS credentials on the beachhead host, and enumerated the Domain Admins group.
 
-Roughly 20 minutes later, the threat actor pivoted using `MERIDIAN\svc-veeam`, a privileged backup-service account, executing obfuscated, in-memory PowerShell (a reflective loader pattern) against both domain controllers, the backup server, and the file server. LSASS was accessed on every host in this wave, consistent with systematic, repeated credential harvesting across critical infrastructure.
+Using the compromised svc-veeam account, the actor moved laterally via obfuscated PowerShell to both domain controllers, the backup server, and the file server — dumping LSASS on each. They then enabled RDP, cleared all Windows Event Logs, and installed a disguised persistence service (QuickAssistSvc) beaconing to C2 on a non-standard port. Windows Defender was also disabled on EXCH-01.
 
-The threat actor then shifted to defense evasion and persistence: RDP was enabled via registry and firewall modification, the staging batch file was deleted, and all three core Windows Event Logs (System, Application, Security) were cleared using `wevtutil.exe`. A disguised remote-access tool — installed as `QuickAssist.exe`, masquerading as Microsoft's legitimate support tool — was silently installed as a Windows service (`QuickAssistSvc`), providing a second, redundant access channel that beaconed to the C2 IP over a non-standard port (TCP/6761). Windows Defender was separately disabled on a previously-unseen host, `EXCH-01`, under the same compromised service account.
+After an internal /16 network scan identified further RDP/SMB-accessible targets, the actor conducted a second, RDP-driven lateral movement wave, deploying cx_secure.exe/cx_agent.exe (with a PsExec-style -psex flag) across nine hosts total — including both domain controllers, the backup server, the file server, an app server, and four workstations.
 
-Following an internal reconnaissance phase — a full `/16` network scan targeting RDP, SMB, RPC, and WinRM ports — the threat actor staged three additional tools (`SysUtilScan.exe`, `cx_secure.exe`, `cx_agent.exe`) and began a second, RDP-driven wave of lateral movement, this time using `mstsc.exe` interactively from the beachhead host. On the backup server and file server, `cx_secure.exe` was executed with an explicit path and password flag; on subsequent hosts — both domain controllers, an application server, and four end-user workstations — `cx_agent.exe` was dropped into each logged-on user's `Downloads` folder and executed with a `-psex` flag, consistent with a PsExec-style self-propagation/deployment mode.
-
-Ransom notes (`HOW_TO_RESTORE.txt`) were written to shared drives, public folders, and user desktops across all nine affected hosts, and desktop wallpapers were modified to ensure visibility of the ransom demand. Critically, both domain controllers and the organization's backup server were among the encrypted hosts, materially complicating recovery. A shared static passphrase (`9f2C71xQmZ44`) was used across all ransomware invocations observed.
+Ransom notes (HOW_TO_RESTORE.txt) and wallpaper changes were deployed on all nine hosts using a shared static passphrase (9f2C71xQmZ44), with both domain controllers and the backup server encrypted — severely complicating recovery.
 
 ---
 
@@ -40,7 +38,8 @@ Ransom notes (`HOW_TO_RESTORE.txt`) were written to shared drives, public folder
 
 **ATT&CK Technique:** T1190 – Exploit Public-Facing Application
 
-The intrusion began with exploitation of an internet-facing Apache ActiveMQ instance hosted on `MSG-BROKER-01.meridianfreight.local`, running under the service account `svc-activemq`, via **CVE-2023-46604** (CVSS 10.0).
+The intrusion began with exploitation of an internet-facing Apache ActiveMQ instance hosted on `MSG-BROKER-01.meridianfreight.local`, running under the service account `svc-activemq`, via **CVE-2023-46604** (CVSS 10.0)  
+https://www.rapid7.com/blog/post/ra-cve-2023-46604-analysis/
 
 The vulnerability lies in OpenWire's handling of the `ExceptionResponse` type, which allows an unauthenticated remote attacker to specify an arbitrary Java class name and constructor argument. The threat actor supplied the class `org.springframework.context.support.ClassPathXmlApplicationContext` along with a URL pointing to an attacker-hosted Spring bean XML file. Because ActiveMQ instantiates the referenced class without validation, the broker fetched and parsed the remote XML — which was cached locally as `C:\ProgramData\ActiveMQ\tmp\bean-9b41ee.xml`.
 
