@@ -1,8 +1,8 @@
 # Apache ActiveMQ Exploit Leads to Domain-Wide Ransomware Deployment
 
-**Client:** Inovasys. 
-**Report Date:** March 21, 2026. 
-**Analyst(s):** Abdelrahman Ghareeb (GL1T0H). 
+**Client:** Inovasys  
+**Report Date:** March 21, 2026  
+**Analyst(s):** Abdelrahman Ghareeb (GL1T0H)  
 
 ---
 
@@ -301,9 +301,46 @@ A single static passphrase, `9f2C71xQmZ44`, was used across every observed invoc
 
 ### Network
 ```
-185.220.101.47            – Primary C2 (Tor exit node); also hosted initial exploit payload
-185.220.101.47:6761       – Secondary C2 (QuickAssist service)
-10.42.15.35                – Internal relay/staging IP (compromised FILE-SRV-02, repurposed by threat actor)
+185[.]220[.]101[.]47            – Primary C2 (Tor exit node); also hosted initial exploit payload
+185[.]220[.]101[.]47:6761       – Secondary C2 (QuickAssist service)
+10[.]42[.]15[.]35                – Internal relay/staging IP (compromised FILE-SRV-02, repurposed by threat actor)
+
+External IPs:
+185[.]220[.]101[.]47      - Malicious C2 (Tor exit node) - first seen 2026-03-02 14:31:47, last seen 2026-03-20 14:41:03
+13[.]107[.]42[.]14        - Microsoft (legit)
+142[.]250[.]72[.]14       - Google (legit)
+151[.]101[.]1[.]69        - Fastly/Microsoft CDN (legit)
+13[.]107[.]4[.]50         - Microsoft Defender Cloud (legit)
+20[.]190[.]128[.]10       - Microsoft (legit)
+204[.]79[.]197[.]219      - Microsoft (legit)
+23[.]212[.]7[.]14         - Akamai/Microsoft CDN (legit)
+
+Internal IPs
+10[.]42[.]15[.]20   - MSG-BROKER-01
+10[.]42[.]15[.]35   - FILE-SRV-02
+10[.]42[.]15[.]40   - BKUP-SRV-01
+10[.]42[.]15[.]50   - EXCH-01
+10[.]42[.]15[.]60   - APP-SRV-03
+10[.]42[.]10[.]10   - DC-01
+10[.]42[.]10[.]11   - DC-02
+10[.]42[.]20[.]45   - WKS-045 (a.chen)
+10[.]42[.]20[.]78   - WKS-078 (m.torres)
+10[.]42[.]20[.]91   - WKS-091 (r.singh)
+10[.]42[.]20[.]112  - WKS-112 (k.osei)
+10[.]42[.]0[.]0/16  - Internal scan range (SysUtilScan.exe)
+```
+
+### DNS
+```
+wdcp[.]microsoft[.]com
+ctldl[.]windowsupdate[.]com
+update[.]microsoft[.]com
+settings-win[.]data[.]microsoft[.]com
+fs[.]microsoft[.]com
+login[.]microsoftonline[.]com
+outlook[.]office365[.]com
+clients2[.]google[.]com
+www[.]google[.]com
 ```
 
 ### Files
@@ -327,19 +364,6 @@ HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp\PortNu
 HKLM\SYSTEM\CurrentControlSet\Services\QuickAssistSvc
 HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\DisableAntiSpyware  (on EXCH-01)
 HKCU\Control Panel\Desktop\Wallpaper  (modified on all encrypted hosts)
-```
-
-### Accounts
-```
-MERIDIAN\svc-activemq   – exploited service account (initial access context)
-MERIDIAN\svc-veeam      – compromised privileged backup service account (used for all lateral movement)
-svc-local               – local execution context on DC-02 / APP-SRV-03 (origin/legitimacy unconfirmed — recommend investigation)
-```
-
-### Other
-```
-9f2C71xQmZ44             – shared static passphrase used across all ransomware tool invocations
--psex                     – observed self-propagation/execution flag on cx_agent.exe
 ```
 
 ---
@@ -371,24 +395,3 @@ svc-local               – local execution context on DC-02 / APP-SRV-03 (origi
 | Impact | Data Encrypted for Impact | T1486 |
 | Impact | Defacement: Internal Defacement | T1491.001 |
 
----
-
-## Recommendations (Prioritized)
-
-**Immediate (0–24 hours)**
-- Isolate all nine confirmed-impacted hosts from the network; preserve for forensic imaging before any remediation.
-- Do not restore from backup until BKUP-SRV-01 repository integrity is independently verified.
-- Block `185.220.101.47` (all ports) at the perimeter firewall.
-- Force credential reset for `svc-veeam`, `svc-activemq`, and `krbtgt` (twice), given confirmed domain controller compromise.
-- Patch or take offline the Apache ActiveMQ instance on MSG-BROKER-01 (upgrade to 5.15.16 / 5.16.7 / 5.17.6 / 5.18.3 or later).
-
-**Short-Term (this week)**
-- Full identity investigation into `svc-local`.
-- Confirm scope on EXCH-01 and any hosts identified in the network scan but not yet triaged.
-- Submit `cx_secure.exe`, `cx_agent.exe`, and `mNcQpLxTfA.exe` for reverse engineering / malware family identification.
-- Deploy detections for `wevtutil.exe cl *`, silent service installs matching legitimate tool names, and outbound traffic to `185.220.101.47`.
-
-**Medium-Term**
-- Review and reduce standing privileges for backup service accounts across the environment (least-privilege for `svc-veeam`-equivalent accounts).
-- Implement network segmentation between internet-facing services (ActiveMQ) and internal domain infrastructure.
-- Enable centralized, tamper-resistant log forwarding (WEF/SIEM) so on-host log clearing cannot remove investigative evidence.
