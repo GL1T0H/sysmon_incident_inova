@@ -49,6 +49,9 @@ The vulnerability lies in OpenWire's handling of the `ExceptionResponse` type, w
 15:14:04  java.exe writes C:\ProgramData\ActiveMQ\tmp\bean-9b41ee.xml
 ```
 
+<img width="1343" height="391" alt="image" src="https://github.com/user-attachments/assets/296f4e3a-e047-458d-9986-a26cfd22a5cf" />
+
+
 The XML defined a Spring bean using a `ProcessBuilder`-equivalent constructor, resulting in arbitrary OS command execution under `svc-activemq`. This was used to invoke `certutil.exe` (LOLBin abuse) to download the primary payload:
 
 ```
@@ -56,6 +59,9 @@ The XML defined a Spring bean using a `ProcessBuilder`-equivalent constructor, r
 15:14:18  cmd.exe executes C:\Users\svc-activemq\AppData\Local\Temp\mNcQpLxTfA.exe
 15:14:22  mNcQpLxTfA.exe → outbound connection → 185.220.101.47 (independent C2 channel established)
 ```
+
+<img width="395" height="306" alt="image" src="https://github.com/user-attachments/assets/14e1078f-b598-4407-b340-2ffaaeef0212" />
+
 
 *Note: No evidence of a prior/failed exploitation attempt was identified in the reviewed telemetry; this appears to be a single successful exploitation event, unlike some publicly documented ActiveMQ CVE-2023-46604 intrusions involving multiple exploitation rounds.*
 
@@ -75,6 +81,9 @@ $s=New-Object IO.MemoryStream([Convert]::FromBase64String(...
 ```
 This decodes to a reflective, in-memory loader pattern (Base64 → MemoryStream → in-memory execution), leaving no corresponding payload file on disk — consistent with a fileless post-exploitation module used specifically for credential access (see *Credential Access*).
 
+<img width="1364" height="248" alt="image" src="https://github.com/user-attachments/assets/9baa87c7-76f0-4426-8182-d88b64c51d26" />
+
+
 ## Persistence
 
 **ATT&CK Techniques:** T1021.001 – Remote Desktop Protocol · T1543.003 – Windows Service · T1036.005 – Masquerading
@@ -88,6 +97,9 @@ The threat actor established two independent, redundant persistence mechanisms o
 16:22:46  netsh advfirewall firewall add rule name="RDPAccess" dir=in action=allow protocol=TCP localport=3389
 ```
 
+<img width="1365" height="252" alt="image" src="https://github.com/user-attachments/assets/3e0635bb-dcbc-499d-9743-674dd397ae91" />
+
+
 **2. Disguised Remote-Access Service ("QuickAssist")**
 ```
 16:33:02  winlogon.exe drops C:\Windows\Temp\QuickAssist_Setup.exe
@@ -97,6 +109,9 @@ The threat actor established two independent, redundant persistence mechanisms o
 16:34:30  services.exe starts QuickAssist.exe --service
 16:41:03  QuickAssist.exe → outbound connection → 185.220.101.47:6761
 ```
+
+<img width="1365" height="481" alt="image" src="https://github.com/user-attachments/assets/27024556-f1cb-40f5-bb27-664be4694660" />
+
 
 The installer and binary names directly imitate Microsoft's legitimate Quick Assist support tool (Masquerading), reducing scrutiny from both allowlisting tools and manual review. The service runs as `NT AUTHORITY\SYSTEM`, restarts automatically on boot, and communicates over a non-standard C2 port (TCP/6761) rather than typical HTTPS (443).
 
@@ -110,12 +125,18 @@ Approximately six minutes after the RDP firewall rule was applied, the staging b
 16:28:55  FileDelete: C:\Windows\Temp\fw_update.bat
 ```
 
+<img width="1362" height="92" alt="image" src="https://github.com/user-attachments/assets/55850464-61c1-4f68-962f-4c119d418744" />
+
+
 All three core Windows Event Logs were then cleared sequentially within a 16-second window, using `wevtutil.exe` invoked directly by the primary implant:
 ```
 16:30:10  wevtutil.exe cl System
 16:30:18  wevtutil.exe cl Application
 16:30:26  wevtutil.exe cl Security
 ```
+
+<img width="1365" height="217" alt="image" src="https://github.com/user-attachments/assets/f3720dfe-2878-4e2c-a7d9-dc35f77af8ca" />
+
 
 This anti-forensic action would have removed nearly all locally-viewable evidence of the intrusion from native Windows Event Viewer. **Sysmon telemetry, which is written to a separate log channel not targeted by `wevtutil.exe cl`, is the primary reason this intrusion remains reconstructable.**
 
@@ -140,6 +161,12 @@ LSASS process memory access (GrantedAccess `0x1010`, consistent with `PROCESS_VM
 
 No dump file was observed being written to disk on any host, indicating credentials were extracted and exfiltrated in-memory over the existing C2/PowerShell channel rather than staged locally. The consistency of this behavior across five separate hosts — including both domain controllers — represents systematic, scripted credential harvesting rather than opportunistic activity, and is assessed as the source of the `svc-veeam` credentials used for all subsequent lateral movement.
 
+<img width="1365" height="390" alt="image" src="https://github.com/user-attachments/assets/7cdfc809-9552-4059-905a-0c77fbf026f1" />
+
+
+<img width="1316" height="397" alt="image" src="https://github.com/user-attachments/assets/8a671d61-801d-4d7e-b472-97f51a68e4d4" />
+
+
 ## Discovery
 
 **ATT&CK Techniques:** T1087.002 – Domain Account Discovery · T1069.002 – Domain Group Discovery · T1046 – Network Service Discovery
@@ -158,6 +185,9 @@ Later, following the RDP/persistence phase, three tools were staged and used to 
 ```
 
 The scan swept the entire internal `/16` range, probing ports associated with lateral movement and remote administration (135/139/445 – RPC/SMB, 3389 – RDP, 5985 – WinRM) against approximately ten internal hosts. Every host subsequently targeted in the RDP-based ransomware deployment wave appears among this scan's destinations with the relevant port confirmed open, establishing this scan as the direct reconnaissance step driving target selection for the remainder of the intrusion.
+
+<img width="1365" height="175" alt="image" src="https://github.com/user-attachments/assets/1c0a39c4-3668-45e7-b30e-d0a79a57d258" />
+
 
 ## Lateral Movement
 
@@ -206,6 +236,9 @@ Two independent, persistent C2 channels were established to the same external IP
 | "QuickAssist" service | 16:41:03 | TCP/6761 | Persistent, service-based, non-standard port |
 
 Internal, secondary staging traffic to `10.42.15.35` (a compromised internal file server) was also observed during the final ransomware deployment wave, functioning as a de facto internal relay for the `cx_agent.exe` tool on newly-compromised end-user workstations (see *Lateral Movement*).
+
+<img width="345" height="353" alt="image" src="https://github.com/user-attachments/assets/9761d289-71bd-448f-a0a2-11b07f033e21" />
+
 
 ## Impact
 
