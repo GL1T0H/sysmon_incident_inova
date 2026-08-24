@@ -277,22 +277,8 @@ A single static passphrase, `9f2C71xQmZ44`, was used across every observed invoc
 
 ## Timeline
 
-| Time (UTC) | Phase | Event |
-|---|---|---|
-| 15:05:11 | — | Baseline: ActiveMQ service running normally |
-| 15:14:02 | Initial Access | CVE-2023-46604 exploited; malicious XML retrieved |
-| 15:14:06–15:14:22 | Initial Access | Payload downloaded (certutil), executed, C2 established |
-| 15:41:30 | Execution | Named-pipe execution verification |
-| 15:41:55 | Credential Access | LSASS accessed on beachhead |
-| 15:46:02 | Discovery | Domain Admins group queried |
-| 16:06:05–16:15:14 | Lateral Movement / Credential Access | PowerShell-based lateral movement to DC-01, DC-02, BKUP-SRV-01, FILE-SRV-02; LSASS accessed on each |
-| 16:22:45–16:22:48 | Persistence | RDP enabled (registry + firewall) |
-| 16:28:55 | Defense Evasion | Staging batch file deleted |
-| 16:30:10–16:30:27 | Defense Evasion | All Windows Event Logs cleared |
-| 16:33:02–16:41:03 | Persistence / C2 | Disguised "QuickAssist" service installed; C2 beacon established |
-| 16:47:12–16:47:20 | Persistence | Windows Defender disabled on EXCH-01 |
-| 16:52:00–16:56:24 | Discovery | Tools staged; full `/16` internal network scan |
-| 17:20:00–18:26:54 | Lateral Movement / Impact | RDP-driven ransomware deployment across 9 hosts |
+<img width="1100" height="2164" alt="Meridian_Incident_Timeline" src="https://github.com/user-attachments/assets/80988ef8-8731-4399-a8fd-5b6a728a1091" />
+
 
 ---
 
